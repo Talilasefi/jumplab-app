@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#071a14" />
+    <title>JumpLab（JL）｜智慧跳躍影像分析</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="extra.css" />
+    <link rel="stylesheet" href="pose-overlay.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div class="brand"><span class="brand-mark">JL</span><div><strong>Jump Lab</strong><small>Vertical Jump · Web Motion Analysis</small></div></div>
+        <div class="version">Version 3 · 2026 年 11 月更新</div>
+        <div class="visit-count"><span class="folder-icon">▱</span><b>50</b><small>同一次開啟期間只計算一次</small></div>
+        <button id="helpBtn" class="ghost-btn">ⓘ 使用說明</button>
+      </header>
+
+      <main>
+        <section class="control-bar">
+          <label>測驗<select id="testType"><option>CMJ 下蹲跳</option><option>SJ 蹲跳</option><option>DJ Drop Jump</option></select></label>
+          <label>FPS<select id="fps"><option>30</option><option>60</option><option>120</option><option selected>240</option></select></label>
+        </section>
+
+        <section class="workspace">
+          <div class="metrics">
+            <div><span>FLIGHT TIME</span><b id="flightMetric">— s</b></div>
+            <div><span>JUMP HEIGHT</span><b id="heightMetric">— cm</b></div>
+          </div>
+          <div class="video-layout">
+            <div class="video-stage" id="videoStage">
+              <video id="video" playsinline></video>
+              <canvas id="poseCanvas"></canvas>
+              <div class="overlay-label overlay-flight" id="flightOverlay">FLIGHT TIME <b>— s</b></div>
+              <div class="overlay-label overlay-takeoff" id="takeoffOverlay">T 起跳</div>
+              <div class="overlay-label overlay-land" id="landOverlay">L 落地</div>
+              <div class="ground-line" id="groundLine"><span>AI FLOOR LINE</span></div>
+              <div class="upload-card" id="uploadCard">
+                <div class="big-icon">▱</div>
+                <strong>匯入側面跳躍影片</strong>
+                <small>完整原始比例顯示，不放大、不裁切頭部與腳掌</small>
+                <input id="fileInput" type="file" accept="video/*" />
+              </div>
+            </div>
+            <aside class="tool-rail">
+              <button class="rail-btn" id="importBtn"><span>▱</span><small>相簿</small></button>
+              <button class="rail-btn" id="recordBtn"><span>◉</span><small>錄影</small></button>
+              <button class="rail-btn active" id="aiBtn" disabled><span>✣</span><small>AI自動標記跳躍高度</small></button>
+              <button class="rail-btn" id="skeletonBtn" disabled><span>✣</span><small>外骨骼　開</small></button>
+              <button class="rail-btn" id="toeBtn" disabled><span>T</span><small>腳尖離地</small></button>
+              <button class="rail-btn" id="landBtn" disabled><span>L</span><small>首次落地</small></button>
+            </aside>
+          </div>
+          <div class="clip-panel">
+            <div class="clip-label">剪輯</div>
+            <div class="range-wrap"><div class="range-track"><input id="startRange" type="range" min="0" max="100" value="0" disabled /><input id="endRange" type="range" min="0" max="100" value="100" disabled /></div><div class="time-row"><b id="startTime">00:00.000</b><b id="endTime">00:00.000</b></div></div>
+            <input id="timeline" type="range" min="0" max="0" value="0" disabled />
+            <div class="frame-readout"><span id="currentTime">00:00.000</span><span>Frame <b id="frameNow">0</b> / <b id="frameTotal">1</b></span></div>
+          </div>
+          <div class="shortcut-row">
+            <button id="jumpAI" disabled>✣<small>AI自動標記跳躍高度</small></button>
+            <button id="toggleSkeleton" disabled>✣<small>骨 外骨骼 開</small></button>
+            <button id="markToe" disabled>T<small>腳尖離地</small></button>
+            <button id="markLand" disabled>L<small>首次落地</small></button>
+            <button id="stepBack10" disabled>−10<small>上十格</small></button>
+            <button id="stepBack" disabled>‹<small>上一格</small></button>
+            <button id="playBtn" disabled>▶<small>播放</small></button>
+            <button id="stepNext" disabled>›<small>下一格</small></button>
+            <button id="stepNext10" disabled>+10<small>下十格</small></button>
+          </div>
+          <div class="hint" id="hint">請先匯入側面跳躍影片</div>
+        </section>
+
+        <section class="paper">
+          <div class="paper-head"><span>影片 <b id="fileName">尚未選擇</b></span><button id="copyBtn">⧉ 複製結果</button></div>
+          <div class="section-title"><h2>分析摘要</h2><p>跳躍高度依滯空時間換算，建議以逐格影像複核 T／L。</p></div>
+          <div class="result-card"><h2>跳躍結果</h2><p>Flight Time：<b id="flightResult">— s</b></p><p>Jump Height：<b id="heightResult">— cm</b></p><button id="saveBtn" disabled>儲存本次 CMJ 檢測（最多 3 次）</button></div>
+
+          <div class="form-card">
+            <h2>選手基本資料</h2>
+            <div class="form-grid">
+              <label>單位<input id="unit" placeholder="單位" /></label>
+              <label>檢測時間<input id="date" type="date" /></label>
+              <label>姓名<input id="name" placeholder="姓名" /></label>
+              <label>身高（cm）<input type="number" placeholder="身高（cm）" /></label>
+              <label>體重（kg）<input type="number" placeholder="體重（kg）" /></label>
+              <label>年齡<input type="number" placeholder="年齡" /></label>
+              <label>性別<select><option>請選擇</option><option>男性</option><option>女性</option><option>其他／不提供</option></select></label>
+              <label>運動專項<input placeholder="運動專項" /></label>
+            </div>
+            <p class="privacy">資料只用於本次報告，不會上傳。</p>
+          </div>
+
+          <div class="report-card">
+            <h2>製作與分享報告書</h2>
+            <p>三張關鍵影格只呈現在 PDF，包含同步外骨骼、髖／膝角度、AI 地板線、關鍵影格離地高度與試跳趨勢。 LINE／Gmail 分享：報告完成後會在背景準備 PDF；按鈕開啟時，點一次即可叫出手機原生分享選單。</p>
+            <div><button disabled>⇩ 下載 PDF</button><button disabled>↗ 準備分享中</button></div>
+          </div>
+
+          <article class="report-preview">
+            <div class="report-brand">臺灣運動健康科技學會</div>
+            <h2>JumpLab V3</h2><p>外骨骼跳躍影像分析報告</p>
+            <div class="report-meta">單位 —　檢測時間 <span id="reportDate"></span>　姓名 —　身高 —　體重 —　年齡 —　性別 —　運動專項 —</div>
+            <div class="report-meta">影片：—　 FPS：<span id="reportFps">240</span>　檢測日期：<span id="reportDate2"></span></div>
+            <h3>目前分析結果</h3><div class="report-stats"><div><small>Flight Time</small><b id="reportFlight">— s</b></div><div><small>Jump Height</small><b id="reportHeight">— cm</b></div></div>
+            <h3>試跳趨勢（最佳值標示 ★）</h3><div class="trend-placeholder">尚未有試跳資料</div>
+            <p class="disclaimer">AI 信心：—。外骨骼、角度、地板線與關鍵影格離地高度皆為單鏡頭 2D AI 估算，需人工逐格複核。</p>
+          </article>
+        </section>
+      </main>
+
+      <footer><strong>Jump Lab · Web Motion Analysis</strong><span>製作單位：臺灣運動健康科技學會 · 更新日期：2026 年 11 月</span><span>研究教學與運動表現觀察用途；不作為醫療診斷或測力板替代。</span><b>COPYRIGHT © 2026</b></footer>
+    </div>
+
+    <div class="modal-backdrop" id="safetyModal">
+      <div class="modal">
+        <div class="modal-art">JUMP<br /><span>LAB</span></div>
+        <h2>跳躍前請先確認安全狀況</h2>
+        <p>JumpLab 是研究、教學與運動表現觀察工具，不是醫療診斷或測力板替代品。</p>
+        <ul><li>測試區域平整、乾燥、無障礙物，並有足夠落地空間。</li><li>目前沒有膝、髖、踝或下背疼痛、腫脹、不穩、近期受傷或術後限制。</li><li>目前沒有胸痛、異常呼吸困難、頭暈、昏厥感、心悸或明顯不適。</li><li>已穿著合適止滑鞋並完成熱身；DJ 使用穩固跳箱並有人員協助。</li><li>出現疼痛或任何不適會立即停止，必要時尋求醫療或合格專業人員評估。</li></ul>
+        <label class="confirm"><input id="safetyCheck" type="checkbox" /> <span>我已閱讀並確認以上全部安全事項<br /><small>若任何一項不符合，請不要進行跳躍測驗。</small></span></label>
+        <small class="modal-note">AI 標記、關節角度與跳高皆為單鏡頭 2D 估算，仍須逐格人工複核。</small>
+        <button id="startBtn" disabled>請先勾選總確認</button>
+      </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
